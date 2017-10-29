@@ -1,5 +1,5 @@
 /*
- Leaflet.draw 0.4.10, a plugin that adds drawing and editing tools to Leaflet powered maps.
+ Leaflet.draw 0.4.10+2ec02e8, a plugin that adds drawing and editing tools to Leaflet powered maps.
  (c) 2012-2017, Jacob Toye, Jon West, Smartrak, Leaflet
 
  https://github.com/Leaflet/Leaflet.draw
@@ -8,7 +8,7 @@
 (function (window, document, undefined) {/**
  * Leaflet.draw assumes that you have already included the Leaflet library.
  */
-L.drawVersion = "0.4.10";
+L.drawVersion = "0.4.10+2ec02e8";
 /**
  * @class L.Draw
  * @aka Draw
@@ -79,116 +79,121 @@ L.Draw = {};
  *  **Please note the edit toolbar is not enabled by default.**
  */
 L.drawLocal = {
-	// format: {
-	// 	numeric: {
-	// 		delimiters: {
-	// 			thousands: ',',
-	// 			decimal: '.'
-	// 		}
-	// 	}
-	// },
-	draw: {
-		toolbar: {
-			// #TODO: this should be reorganized where actions are nested in actions
-			// ex: actions.undo  or actions.cancel
-			actions: {
-				title: 'Cancel drawing',
-				text: 'Cancel'
-			},
-			finish: {
-				title: 'Finish drawing',
-				text: 'Finish'
-			},
-			undo: {
-				title: 'Delete last point drawn',
-				text: 'Delete last point'
-			},
-			buttons: {
-				polyline: 'Draw a polyline',
-				polygon: 'Draw a polygon',
-				rectangle: 'Draw a rectangle',
-				circle: 'Draw a circle',
-				marker: 'Draw a marker'
-			}
-		},
-		handlers: {
-			circle: {
-				tooltip: {
-					start: 'Click and drag to draw circle.'
-				},
-				radius: 'Radius'
-			},
-			marker: {
-				tooltip: {
-					start: 'Click map to place marker.'
-				}
-			},
-			polygon: {
-				tooltip: {
-					start: 'Click to start drawing shape.',
-					cont: 'Click to continue drawing shape.',
-					end: 'Click first point to close this shape.'
-				}
-			},
-			polyline: {
-				error: '<strong>Error:</strong> shape edges cannot cross!',
-				tooltip: {
-					start: 'Click to start drawing line.',
-					cont: 'Click to continue drawing line.',
-					end: 'Click last point to finish line.'
-				}
-			},
-			rectangle: {
-				tooltip: {
-					start: 'Click and drag to draw rectangle.'
-				}
-			},
-			simpleshape: {
-				tooltip: {
-					end: 'Release mouse to finish drawing.'
-				}
-			}
-		}
-	},
-	edit: {
-		toolbar: {
-			actions: {
-				save: {
-					title: 'Save changes.',
-					text: 'Save'
-				},
-				cancel: {
-					title: 'Cancel editing, discards all changes.',
-					text: 'Cancel'
-				},
-				clearAll:{
-					title: 'clear all layers.',
-					text: 'Clear All'
-				}
-			},
-			buttons: {
-				edit: 'Edit layers.',
-				editDisabled: 'No layers to edit.',
-				remove: 'Delete layers.',
-				removeDisabled: 'No layers to delete.'
-			}
-		},
-		handlers: {
-			edit: {
-				tooltip: {
-					text: 'Drag handles, or marker to edit feature.',
-					subtext: 'Click cancel to undo changes.'
-				}
-			},
-			remove: {
-				tooltip: {
-					text: 'Click on a feature to remove'
-				}
-			}
-		}
-	}
+    // format: {
+    // 	numeric: {
+    // 		delimiters: {
+    // 			thousands: ',',
+    // 			decimal: '.'
+    // 		}
+    // 	}
+    // },
+    draw: {
+        toolbar: {
+            // #TODO: this should be reorganized where actions are nested in actions
+            // ex: actions.undo  or actions.cancel
+            actions: {
+                title: 'Cancel drawing',
+                text: 'Cancel'
+            },
+            finish: {
+                title: 'Finish drawing',
+                text: 'Finish'
+            },
+            undo: {
+                title: 'Delete last point drawn',
+                text: 'Delete last point'
+            },
+            buttons: {
+                polyline: 'Draw a polyline',
+                polygon: 'Draw a polygon',
+                rectangle: 'Draw a rectangle',
+                circle: 'Draw a circle',
+                marker: 'Draw a marker',
+                image: 'Draw and place an image'
+            }
+        },
+        handlers: {
+            circle: {
+                tooltip: {
+                    start: 'Click and drag to draw circle.'
+                },
+                radius: 'Radius'
+            },
+            marker: {
+                tooltip: {
+                    start: 'Click map to place marker.'
+                }
+            },
+            polygon: {
+                tooltip: {
+                    start: 'Click to start drawing shape.',
+                    cont: 'Click to continue drawing shape.',
+                    end: 'Click first point to close this shape.'
+                }
+            },
+            polyline: {
+                error: '<strong>Error:</strong> shape edges cannot cross!',
+                tooltip: {
+                    start: 'Click to start drawing line.',
+                    cont: 'Click to continue drawing line.',
+                    end: 'Click last point to finish line.'
+                }
+            },
+            rectangle: {
+                tooltip: {
+                    start: 'Click and drag to draw rectangle.'
+                }
+            },
+            simpleshape: {
+                tooltip: {
+                    end: 'Release mouse to finish drawing.'
+                }
+            },
+            image: {
+                tooltip: {
+                    start: 'Click and drag to define the boundary of the image.'
+                }
+            }
+        }
+    },
+    edit: {
+        toolbar: {
+            actions: {
+                save: {
+                    title: 'Finish drawing',
+                    text: 'Finish'
+                },
+                cancel: {
+                    title: 'Cancel editing, discards all changes',
+                    text: 'Cancel'
+                },
+                clearAll:{
+                    title: 'Clear all layers',
+                    text: 'Clear All'
+                }
+            },
+            buttons: {
+                edit: 'Edit layers',
+                editDisabled: 'No layers to edit',
+                remove: 'Delete layers',
+                removeDisabled: 'No layers to delete'
+            }
+        },
+        handlers: {
+            edit: {
+                tooltip: {
+                    text: 'Drag handles or markers to edit features.',
+                    subtext: 'Click cancel to undo changes.'
+                }
+            },
+            remove: {
+                tooltip: {
+                    text: 'Click on a feature to remove.'
+                }
+            }
+        }
+    }
 };
-
 
 
 /**
@@ -1545,6 +1550,55 @@ L.Draw.Marker = L.Draw.Feature.extend({
 	}
 });
 
+
+
+/**
+ * Extends the UX of rectangle drawing to define the initial anchor points and clipping rectangle of
+ * a new instance of L.ImageTransform.
+ *
+ * Utilises the services of an imageProvider (via options) whose responsibility is to provide the
+ * path to an image to be contained within the resulting shape.
+ *
+ * @class L.Draw.Image
+ * @aka Draw.Image
+ * @inherits L.Draw.Rectangle
+ */
+L.Draw.Image = L.Draw.Rectangle.extend({
+    statics: {
+        TYPE: 'image'
+    },
+
+    options: L.extend({},
+        L.Draw.Rectangle.prototype.options,
+        {
+            imageProvider: {
+                getImagePath: function() { return null; }
+            }
+        }
+    ),
+
+    initialize: function(map, options) {
+        this.type = L.Draw.Image.TYPE;
+        this._initialLabelText = L.drawLocal.draw.handlers.image.tooltip.start;
+        L.Draw.SimpleShape.prototype.initialize.call(this, map, options);
+    },
+
+    _fireCreatedEvent: function() {
+        var shapeBounds = this._shape.getLatLngs()[0];
+        var shapeOptions = this.options.shapeOptions;
+        this.options.imageProvider.getImagePath()
+            .then(function(imagePath) {
+                if (imagePath) {
+
+                    var rectangle = new L.Rectangle(_.cloneDeep(shapeBounds), shapeOptions);
+                    rectangle.image = {
+                        url: imagePath
+                    };
+                    L.Draw.SimpleShape.prototype._fireCreatedEvent.call(this, rectangle);
+                }
+            });
+    }
+});
 
 
 L.Edit = L.Edit || {};
@@ -3759,105 +3813,110 @@ L.Draw.Tooltip = L.Class.extend({
  */
 L.DrawToolbar = L.Toolbar.extend({
 
-	statics: {
-		TYPE: 'draw'
-	},
+    statics: {
+        TYPE: 'draw'
+    },
 
-	options: {
-		polyline: {},
-		polygon: {},
-		rectangle: {},
-		circle: {},
-		marker: {}
-	},
+    options: {
+        polyline: {},
+        polygon: {},
+        rectangle: {},
+        circle: {},
+        marker: {},
+        image: {}
+    },
 
-	// @method initialize(): void
-	initialize: function (options) {
-		// Ensure that the options are merged correctly since L.extend is only shallow
-		for (var type in this.options) {
-			if (this.options.hasOwnProperty(type)) {
-				if (options[type]) {
-					options[type] = L.extend({}, this.options[type], options[type]);
-				}
-			}
-		}
+    // @method initialize(): void
+    initialize: function (options) {
+        // Ensure that the options are merged correctly since L.extend is only shallow
+        for (var type in this.options) {
+            if (this.options.hasOwnProperty(type)) {
+                if (options[type]) {
+                    options[type] = L.extend({}, this.options[type], options[type]);
+                }
+            }
+        }
 
-		this._toolbarClass = 'leaflet-draw-draw';
-		L.Toolbar.prototype.initialize.call(this, options);
-	},
+        this._toolbarClass = 'leaflet-draw-draw';
+        L.Toolbar.prototype.initialize.call(this, options);
+    },
 
-	// @method getModeHandlers(): object
-	// Get mode handlers information
-	getModeHandlers: function (map) {
-		return [
-			{
-				enabled: this.options.polyline,
-				handler: new L.Draw.Polyline(map, this.options.polyline),
-				title: L.drawLocal.draw.toolbar.buttons.polyline
-			},
-			{
-				enabled: this.options.polygon,
-				handler: new L.Draw.Polygon(map, this.options.polygon),
-				title: L.drawLocal.draw.toolbar.buttons.polygon
-			},
-			{
-				enabled: this.options.rectangle,
-				handler: new L.Draw.Rectangle(map, this.options.rectangle),
-				title: L.drawLocal.draw.toolbar.buttons.rectangle
-			},
-			{
-				enabled: this.options.circle,
-				handler: new L.Draw.Circle(map, this.options.circle),
-				title: L.drawLocal.draw.toolbar.buttons.circle
-			},
-			{
-				enabled: this.options.marker,
-				handler: new L.Draw.Marker(map, this.options.marker),
-				title: L.drawLocal.draw.toolbar.buttons.marker
-			}
-		];
-	},
+    // @method getModeHandlers(): object
+    // Get mode handlers information
+    getModeHandlers: function (map) {
+        return [
+            {
+                enabled: this.options.polyline,
+                handler: new L.Draw.Polyline(map, this.options.polyline),
+                title: L.drawLocal.draw.toolbar.buttons.polyline
+            },
+            {
+                enabled: this.options.polygon,
+                handler: new L.Draw.Polygon(map, this.options.polygon),
+                title: L.drawLocal.draw.toolbar.buttons.polygon
+            },
+            {
+                enabled: this.options.rectangle,
+                handler: new L.Draw.Rectangle(map, this.options.rectangle),
+                title: L.drawLocal.draw.toolbar.buttons.rectangle
+            },
+            {
+                enabled: this.options.circle,
+                handler: new L.Draw.Circle(map, this.options.circle),
+                title: L.drawLocal.draw.toolbar.buttons.circle
+            },
+            {
+                enabled: this.options.marker,
+                handler: new L.Draw.Marker(map, this.options.marker),
+                title: L.drawLocal.draw.toolbar.buttons.marker
+            },
+            {
+                enabled: this.options.image,
+                handler: new L.Draw.Image(map, this.options.image),
+                title: L.drawLocal.draw.toolbar.buttons.image
+            }
+        ];
+    },
 
-	// @method getActions(): object
-	// Get action information
-	getActions: function (handler) {
-		return [
-			{
-				enabled: handler.completeShape,
-				title: L.drawLocal.draw.toolbar.finish.title,
-				text: L.drawLocal.draw.toolbar.finish.text,
-				callback: handler.completeShape,
-				context: handler
-			},
-			{
-				enabled: handler.deleteLastVertex,
-				title: L.drawLocal.draw.toolbar.undo.title,
-				text: L.drawLocal.draw.toolbar.undo.text,
-				callback: handler.deleteLastVertex,
-				context: handler
-			},
-			{
-				title: L.drawLocal.draw.toolbar.actions.title,
-				text: L.drawLocal.draw.toolbar.actions.text,
-				callback: this.disable,
-				context: this
-			}
-		];
-	},
+    // @method getActions(): object
+    // Get action information
+    getActions: function (handler) {
+        return [
+            {
+                enabled: handler.completeShape,
+                title: L.drawLocal.draw.toolbar.finish.title,
+                text: L.drawLocal.draw.toolbar.finish.text,
+                callback: handler.completeShape,
+                context: handler
+            },
+            {
+                enabled: handler.deleteLastVertex,
+                title: L.drawLocal.draw.toolbar.undo.title,
+                text: L.drawLocal.draw.toolbar.undo.text,
+                callback: handler.deleteLastVertex,
+                context: handler
+            },
+            {
+                title: L.drawLocal.draw.toolbar.actions.title,
+                text: L.drawLocal.draw.toolbar.actions.text,
+                callback: this.disable,
+                context: this
+            }
+        ];
+    },
 
-	// @method setOptions(): void
-	// Sets the options to the toolbar
-	setOptions: function (options) {
-		L.setOptions(this, options);
+    // @method setOptions(): void
+    // Sets the options to the toolbar
+    setOptions: function (options) {
+        L.setOptions(this, options);
 
-		for (var type in this._modes) {
-			if (this._modes.hasOwnProperty(type) && options.hasOwnProperty(type)) {
-				this._modes[type].handler.setOptions(options[type]);
-			}
-		}
-	}
+        for (var type in this._modes) {
+            if (this._modes.hasOwnProperty(type) && options.hasOwnProperty(type)) {
+                this._modes[type].handler.setOptions(options[type]);
+            }
+        }
+    }
 });
-
 
 
 /*L.Map.mergeOptions({
