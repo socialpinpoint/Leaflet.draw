@@ -1,5 +1,5 @@
 /*
- Leaflet.draw 0.4.10+2ec02e8, a plugin that adds drawing and editing tools to Leaflet powered maps.
+ Leaflet.draw 0.4.10+9da21a5, a plugin that adds drawing and editing tools to Leaflet powered maps.
  (c) 2012-2017, Jacob Toye, Jon West, Smartrak, Leaflet
 
  https://github.com/Leaflet/Leaflet.draw
@@ -8,7 +8,7 @@
 (function (window, document, undefined) {/**
  * Leaflet.draw assumes that you have already included the Leaflet library.
  */
-L.drawVersion = "0.4.10+2ec02e8";
+L.drawVersion = "0.4.10+9da21a5";
 /**
  * @class L.Draw
  * @aka Draw
@@ -1584,6 +1584,7 @@ L.Draw.Image = L.Draw.Rectangle.extend({
     },
 
     _fireCreatedEvent: function() {
+        var self = this;
         var shapeBounds = this._shape.getLatLngs()[0];
         var shapeOptions = this.options.shapeOptions;
         this.options.imageProvider.getImagePath()
@@ -1594,7 +1595,7 @@ L.Draw.Image = L.Draw.Rectangle.extend({
                     rectangle.image = {
                         url: imagePath
                     };
-                    L.Draw.SimpleShape.prototype._fireCreatedEvent.call(this, rectangle);
+                    L.Draw.SimpleShape.prototype._fireCreatedEvent.call(self, rectangle);
                 }
             });
     }
