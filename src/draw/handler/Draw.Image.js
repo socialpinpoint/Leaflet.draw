@@ -30,6 +30,7 @@ L.Draw.Image = L.Draw.Rectangle.extend({
     },
 
     _fireCreatedEvent: function() {
+        var self = this;
         var shapeBounds = this._shape.getLatLngs()[0];
         var shapeOptions = this.options.shapeOptions;
         this.options.imageProvider.getImagePath()
@@ -40,7 +41,7 @@ L.Draw.Image = L.Draw.Rectangle.extend({
                     rectangle.image = {
                         url: imagePath
                     };
-                    L.Draw.SimpleShape.prototype._fireCreatedEvent.call(this, rectangle);
+                    L.Draw.SimpleShape.prototype._fireCreatedEvent.call(self, rectangle);
                 }
             });
     }
