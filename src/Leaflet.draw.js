@@ -166,10 +166,12 @@ L.drawLocal = {
                 }
             },
             buttons: {
-                edit: 'Edit layers',
-                editDisabled: 'No layers to edit',
-                remove: 'Delete layers',
-                removeDisabled: 'No layers to delete'
+                edit: 'Edit features',
+                editDisabled: 'No features to edit',
+                remove: 'Delete features',
+                removeDisabled: 'No features to delete',
+                removeDirect: 'Delete the selected feature',
+                removeDirectDisabled: 'Select a feature to delete'
             }
         },
         handlers: {

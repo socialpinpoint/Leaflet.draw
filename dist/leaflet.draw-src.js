@@ -1,5 +1,5 @@
 /*
- Leaflet.draw 0.4.10+9da21a5, a plugin that adds drawing and editing tools to Leaflet powered maps.
+ Leaflet.draw 0.4.10, a plugin that adds drawing and editing tools to Leaflet powered maps.
  (c) 2012-2017, Jacob Toye, Jon West, Smartrak, Leaflet
 
  https://github.com/Leaflet/Leaflet.draw
@@ -8,7 +8,7 @@
 (function (window, document, undefined) {/**
  * Leaflet.draw assumes that you have already included the Leaflet library.
  */
-L.drawVersion = "0.4.10+9da21a5";
+L.drawVersion = "0.4.10";
 /**
  * @class L.Draw
  * @aka Draw
@@ -173,10 +173,12 @@ L.drawLocal = {
                 }
             },
             buttons: {
-                edit: 'Edit layers',
-                editDisabled: 'No layers to edit',
-                remove: 'Delete layers',
-                removeDisabled: 'No layers to delete'
+                edit: 'Edit features',
+                editDisabled: 'No features to edit',
+                remove: 'Delete features',
+                removeDisabled: 'No features to delete',
+                removeDirect: 'Delete the selected feature',
+                removeDirectDisabled: 'Select a feature to delete'
             }
         },
         handlers: {
@@ -3945,7 +3947,10 @@ L.EditToolbar = L.Toolbar.extend({
 				maintainColor: false
 			}
 		},
-		remove: {},
+		remove: {
+			direct: false,
+			filterSelectedLayers: function (layers) { return []; }
+		},
 		poly: null,
 		featureGroup: null /* REQUIRED! TODO: perhaps if not set then all layers on the map are selectable? */
 	},
@@ -3978,6 +3983,23 @@ L.EditToolbar = L.Toolbar.extend({
 	// Get mode handlers information
 	getModeHandlers: function (map) {
 		var featureGroup = this.options.featureGroup;
+		var removeHandler = this.options.remove.direct
+			? {
+				enabled: this.options.remove,
+				handler: new L.EditToolbar.DeleteDirect(map, {
+					featureGroup: featureGroup,
+					filterSelectedLayers: this.options.remove.filterSelectedLayers
+				}),
+				title: L.drawLocal.edit.toolbar.buttons.removeDirect
+			}
+			: {
+				enabled: this.options.remove,
+				handler: new L.EditToolbar.Delete(map, {
+					featureGroup: featureGroup
+				}),
+				title: L.drawLocal.edit.toolbar.buttons.remove
+			};
+
 		return [
 			{
 				enabled: this.options.edit,
@@ -3988,39 +4010,38 @@ L.EditToolbar = L.Toolbar.extend({
 				}),
 				title: L.drawLocal.edit.toolbar.buttons.edit
 			},
-			{
-				enabled: this.options.remove,
-				handler: new L.EditToolbar.Delete(map, {
-					featureGroup: featureGroup
-				}),
-				title: L.drawLocal.edit.toolbar.buttons.remove
-			}
+ 			removeHandler
 		];
 	},
 
 	// @method getActions(): object
 	// Get actions information
-	getActions: function () {
-		return [
-			{
-				title: L.drawLocal.edit.toolbar.actions.save.title,
-				text: L.drawLocal.edit.toolbar.actions.save.text,
-				callback: this._save,
-				context: this
-			},
-			{
-				title: L.drawLocal.edit.toolbar.actions.cancel.title,
-				text: L.drawLocal.edit.toolbar.actions.cancel.text,
-				callback: this.disable,
-				context: this
-			},
-			{
-				title: L.drawLocal.edit.toolbar.actions.clearAll.title,
-				text: L.drawLocal.edit.toolbar.actions.clearAll.text,
-				callback: this._clearAllLayers,
-				context: this
-			}
-		];
+    getActions: function(handler) {
+
+			return this.options.remove &&
+             !this.options.remove.direct &&
+             (handler.type === L.EditToolbar.Delete.TYPE)
+			? [
+				{
+					title: L.drawLocal.edit.toolbar.actions.save.title,
+					text: L.drawLocal.edit.toolbar.actions.save.text,
+					callback: this._save,
+					context: this
+				},
+				{
+					title: L.drawLocal.edit.toolbar.actions.cancel.title,
+					text: L.drawLocal.edit.toolbar.actions.cancel.text,
+					callback: this.disable,
+					context: this
+				},
+				{
+					title: L.drawLocal.edit.toolbar.actions.clearAll.title,
+					text: L.drawLocal.edit.toolbar.actions.clearAll.text,
+					callback: this._clearAllLayers,
+					context: this
+				}
+			]
+			: [];
 	},
 
 	// @method addToolbar(map): L.DomUtil
@@ -4030,15 +4051,23 @@ L.EditToolbar = L.Toolbar.extend({
 
 		this._checkDisabled();
 
-		this.options.featureGroup.on('layeradd layerremove', this._checkDisabled, this);
+
+		this.options.featureGroup.eachLayer(this._onLayerAdd, this);
+		this.options.featureGroup
+        .on('layeradd', this._onLayerAdd, this)
+        .on('layerremove', this._onLayerRemove, this);
 
 		return container;
 	},
 
 	// @method removeToolbar(): void
 	// Removes the toolbar from the map
-	removeToolbar: function () {
-		this.options.featureGroup.off('layeradd layerremove', this._checkDisabled, this);
+	removeToolbar: function() {
+
+		this.options.featureGroup
+        .off('layeradd', this._onLayerAdd, this)
+        .off('layerremove', this._onLayerRemove, this);
+		this.options.featureGroup.eachLayer(this._onLayerRemove, this);
 
 		L.Toolbar.prototype.removeToolbar.call(this);
 	},
@@ -4070,44 +4099,80 @@ L.EditToolbar = L.Toolbar.extend({
 	},
 
 	_checkDisabled: function () {
-		var featureGroup = this.options.featureGroup,
-			hasLayers = featureGroup.getLayers().length !== 0,
-			button;
+		var hasLayers = this._hasLayers();
+		var hasSingleLayer = this._hasASingleSelectedLayer();
+		var button = null;
 
 		if (this.options.edit) {
 			button = this._modes[L.EditToolbar.Edit.TYPE].button;
+			button.setAttribute(
+			  'title',
+			  hasLayers
+			    ? L.drawLocal.edit.toolbar.buttons.edit
+			    : L.drawLocal.edit.toolbar.buttons.editDisabled);
 
 			if (hasLayers) {
 				L.DomUtil.removeClass(button, 'leaflet-disabled');
 			} else {
 				L.DomUtil.addClass(button, 'leaflet-disabled');
 			}
+    }
 
-			button.setAttribute(
-				'title',
-				hasLayers ?
-					L.drawLocal.edit.toolbar.buttons.edit
-					: L.drawLocal.edit.toolbar.buttons.editDisabled
-			);
-		}
+    if (this.options.remove) {
+    
+      if (this.options.remove.direct) {
+        button = this._modes[L.EditToolbar.DeleteDirect.TYPE].button;
+        button.setAttribute(
+          'title',
+          hasLayers && hasSingleLayer
+            ? L.drawLocal.edit.toolbar.buttons.removeDirect
+            : L.drawLocal.edit.toolbar.buttons.removeDirectDisabled);
+            
+        if (hasLayers && hasSingleLayer) {
+          L.DomUtil.removeClass(button, 'leaflet-disabled');
+        } else {
+          L.DomUtil.addClass(button, 'leaflet-disabled');
+        }
+      }
+      else {
+        button = this._modes[L.EditToolbar.Delete.TYPE].button;
+        button.setAttribute(
+          'title',
+          hasLayers
+            ? L.drawLocal.edit.toolbar.buttons.remove
+            : L.drawLocal.edit.toolbar.buttons.removeDisabled);
+            
+        if (hasLayers) {
+          L.DomUtil.removeClass(button, 'leaflet-disabled');
+        } else {
+          L.DomUtil.addClass(button, 'leaflet-disabled');
+        }
+      }
+    }
+  },
 
-		if (this.options.remove) {
-			button = this._modes[L.EditToolbar.Delete.TYPE].button;
+  _hasASingleSelectedLayer: function () {
+    var availableLayers = this.options.featureGroup.getLayers();
+    var selectedLayers = availableLayers && this.options.remove.filterSelectedLayers && this.options.remove.filterSelectedLayers(availableLayers);
+    return selectedLayers && selectedLayers.length === 1;
+  },
 
-			if (hasLayers) {
-				L.DomUtil.removeClass(button, 'leaflet-disabled');
-			} else {
-				L.DomUtil.addClass(button, 'leaflet-disabled');
-			}
+  _hasLayers: function () {
+    var availableLayers = this.options.featureGroup.getLayers();
+    return availableLayers && availableLayers.length > 0;
+  },
 
-			button.setAttribute(
-				'title',
-				hasLayers ?
-					L.drawLocal.edit.toolbar.buttons.remove
-					: L.drawLocal.edit.toolbar.buttons.removeDisabled
-			);
-		}
-	}
+  _onLayerAdd: function (event) {
+    var layer = event.layer || event.target || event;
+    layer.on('click', this._checkDisabled, this);
+    this._checkDisabled();
+  },
+
+  _onLayerRemove: function (event) {
+    var layer = event.layer || event.target || event;
+    layer.off('click', this._checkDisabled, this);
+    this._checkDisabled();
+  }
 });
 
 
@@ -4552,6 +4617,98 @@ L.EditToolbar.Delete = L.Handler.extend({
 	_hasAvailableLayers: function () {
 		return this._deletableLayers.getLayers().length !== 0;
 	}
+});
+
+
+
+/**
+ * @class L.EditToolbar.DeleteDirect
+ * @aka EditToolbar.DeleteDirect
+ */
+L.EditToolbar.DeleteDirect = L.Handler.extend({
+    statics: {
+        TYPE: 'remove'
+    },
+    includes: L.Mixin.Events,
+
+    addHooks: function () {
+        if (this._map) {
+            this._map.getContainer().focus();
+        }
+
+        var selectedLayer = this._getSelectedLayer();
+        if (selectedLayer) {
+            this._removeLayer(selectedLayer);
+        }
+    },
+
+    initialize: function (map, options) {
+        L.Handler.prototype.initialize.call(this, map);
+        L.Util.setOptions(this, options);
+
+        this._deletableLayers = this.options.featureGroup;
+        if (!(this._deletableLayers instanceof L.FeatureGroup)) {
+            throw new Error('options.featureGroup must be a L.FeatureGroup');
+        }
+        this.filterSelectedLayers = this.options.filterSelectedLayers;
+        this.type = L.EditToolbar.DeleteDirect.TYPE;
+    },
+
+    disable: function () {
+        if (this._enabled) {
+            L.Handler.prototype.disable.call(this);
+            this._map.fire(L.Draw.Event.DELETESTOP, { handler: this.type });
+            this.fire('disabled', { handler: this.type });
+        }
+    },
+
+    enable: function () {
+        if (!this._enabled && this._hasLayers() && this._hasASingleSelectedLayer()) {
+            this.fire('enabled', { handler: this.type });
+            this._map.fire(L.Draw.Event.DELETESTART, { handler: this.type });
+            L.Handler.prototype.enable.call(this);
+        }
+    },
+
+    removeHooks: function () {
+    },
+
+    revertLayers: function () {
+    },
+
+    _getSelectedLayer: function () {
+        var availableLayers = this._deletableLayers.getLayers();
+        var selectedLayers = availableLayers && this.options.filterSelectedLayers && this.filterSelectedLayers(availableLayers);
+        return selectedLayers && selectedLayers.length > 0
+            ? selectedLayers[0]
+            : null;
+    },
+
+    _hasLayers: function () {
+        var availableLayers = this._deletableLayers.getLayers();
+        return availableLayers && availableLayers.length > 0;
+    },
+
+    _hasASingleSelectedLayer: function () {
+        var availableLayers = this.options.featureGroup.getLayers();
+        var selectedLayers = availableLayers && this.options.filterSelectedLayers && this.options.filterSelectedLayers(availableLayers);
+        return selectedLayers && selectedLayers.length === 1;
+    },
+
+    _removeLayer: function (eventOrLayer) {
+        var layer = eventOrLayer.layer || eventOrLayer.target || eventOrLayer;
+        if (layer) {
+            this._deletableLayers.removeLayer(layer);
+
+
+            var deletedLayers = new L.LayerGroup();
+            deletedLayers.addLayer(layer);
+            this._map.fire(L.Draw.Event.DELETED, { layers: deletedLayers });
+
+            layer.fire('deleted');
+            this.disable();
+        }
+    }
 });
 
 
