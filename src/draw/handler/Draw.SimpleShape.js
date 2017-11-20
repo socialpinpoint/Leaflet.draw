@@ -85,9 +85,9 @@ L.Draw.SimpleShape = L.Draw.Feature.extend({
 				result = true;
 			}
 			else {
-            	if (window && window.console && window.console.log) {
-                    window.console.log('Ignoring Empty Shape: ' + this._shape.getBounds().toBBoxString());
-                }
+				if (window && window.console && window.console.log) {
+					window.console.log('Ignoring Empty Shape: ' + this._shape.getBounds().toBBoxString());
+				}
 			}
 		}
 		return result;
