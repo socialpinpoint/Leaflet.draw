@@ -1249,6 +1249,23 @@ L.Draw.SimpleShape = L.Draw.Feature.extend({
 		};
 	},
 
+	_isShapeValid: function () {
+		var result = false;
+		if (this._shape && this._shape.getBounds()) {
+
+			if (this._shape.getBounds().getNorthWest() && this._shape.getBounds().getSouthEast() &&
+				!this._shape.getBounds().getNorthWest().equals(this._shape.getBounds().getSouthEast())) {
+				result = true;
+			}
+			else {
+            	if (window && window.console && window.console.log) {
+                    window.console.log('Ignoring Empty Shape: ' + this._shape.getBounds().toBBoxString());
+                }
+			}
+		}
+		return result;
+	},
+
 	_onMouseDown: function (e) {
 		this._isDrawing = true;
 		this._startLatLng = e.latlng;
@@ -1270,7 +1287,7 @@ L.Draw.SimpleShape = L.Draw.Feature.extend({
 	},
 
 	_onMouseUp: function () {
-		if (this._shape) {
+		if (this._isShapeValid()) {
 			this._fireCreatedEvent();
 		}
 
