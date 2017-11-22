@@ -1258,9 +1258,9 @@ L.Draw.SimpleShape = L.Draw.Feature.extend({
 				result = true;
 			}
 			else {
-            	if (window && window.console && window.console.log) {
-                    window.console.log('Ignoring Empty Shape: ' + this._shape.getBounds().toBBoxString());
-                }
+				if (window && window.console && window.console.log) {
+					window.console.log('Ignoring Empty Shape: ' + this._shape.getBounds().toBBoxString());
+				}
 			}
 		}
 		return result;
@@ -1709,499 +1709,6 @@ L.Marker.addInitHook(function () {
 
 
 L.Edit = L.Edit || {};
-
-/**
- * @class L.Edit.Polyline
- * @aka L.Edit.Poly
- * @aka Edit.Poly
- */
-L.Edit.Poly = L.Handler.extend({
-	options: {},
-
-	// @method initialize(): void
-	initialize: function (poly, options) {
-
-		this.latlngs = [poly._latlngs];
-		if (poly._holes) {
-			this.latlngs = this.latlngs.concat(poly._holes);
-		}
-
-		this._poly = poly;
-		L.setOptions(this, options);
-
-		this._poly.on('revert-edited', this._updateLatLngs, this);
-	},
-
-	// Compatibility method to normalize Poly* objects
-	// between 0.7.x and 1.0+
-	_defaultShape: function () {
-		if (!L.Polyline._flat) {
-			return this._poly._latlngs;
-		}
-		return L.Polyline._flat(this._poly._latlngs) ? this._poly._latlngs : this._poly._latlngs[0];
-	},
-
-	_eachVertexHandler: function (callback) {
-		for (var i = 0; i < this._verticesHandlers.length; i++) {
-			callback(this._verticesHandlers[i]);
-		}
-	},
-
-	// @method addHooks(): void
-	// Add listener hooks to this handler
-	addHooks: function () {
-		this._initHandlers();
-		this._eachVertexHandler(function (handler) {
-			handler.addHooks();
-		});
-	},
-
-	// @method removeHooks(): void
-	// Remove listener hooks from this handler
-	removeHooks: function () {
-		this._eachVertexHandler(function (handler) {
-			handler.removeHooks();
-		});
-	},
-
-	// @method updateMarkers(): void
-	// Fire an update for each vertex handler
-	updateMarkers: function () {
-		this._eachVertexHandler(function (handler) {
-			handler.updateMarkers();
-		});
-	},
-
-	_initHandlers: function () {
-		this._verticesHandlers = [];
-		for (var i = 0; i < this.latlngs.length; i++) {
-			this._verticesHandlers.push(new L.Edit.PolyVerticesEdit(this._poly, this.latlngs[i], this.options));
-		}
-	},
-
-	_updateLatLngs: function (e) {
-		this.latlngs = [e.layer._latlngs];
-		if (e.layer._holes) {
-			this.latlngs = this.latlngs.concat(e.layer._holes);
-		}
-	}
-
-});
-
-/**
- * @class L.Edit.PolyVerticesEdit
- * @aka Edit.PolyVerticesEdit
- */
-L.Edit.PolyVerticesEdit = L.Handler.extend({
-	options: {
-		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
-			className: 'leaflet-div-icon leaflet-editing-icon'
-		}),
-		touchIcon: new L.DivIcon({
-			iconSize: new L.Point(20, 20),
-			className: 'leaflet-div-icon leaflet-editing-icon leaflet-touch-icon'
-		}),
-		drawError: {
-			color: '#b00b00',
-			timeout: 1000
-		}
-
-
-	},
-
-	// @method intialize(): void
-	initialize: function (poly, latlngs, options) {
-		// if touch, switch to touch icon
-		if (L.Browser.touch) {
-			this.options.icon = this.options.touchIcon;
-		}
-		this._poly = poly;
-
-		if (options && options.drawError) {
-			options.drawError = L.Util.extend({}, this.options.drawError, options.drawError);
-		}
-
-		this._latlngs = latlngs;
-
-		L.setOptions(this, options);
-	},
-
-	// Compatibility method to normalize Poly* objects
-	// between 0.7.x and 1.0+
-	_defaultShape: function () {
-		if (!L.Polyline._flat) {
-			return this._latlngs;
-		}
-		return L.Polyline._flat(this._latlngs) ? this._latlngs : this._latlngs[0];
-	},
-
-	// @method addHooks(): void
-	// Add listener hooks to this handler.
-	addHooks: function () {
-		var poly = this._poly;
-
-		if (!(poly instanceof L.Polygon)) {
-			poly.options.fill = false;
-			if (poly.options.editing) {
-				poly.options.editing.fill = false;
-			}
-		}
-
-		poly.setStyle(poly.options.editing);
-
-		if (this._poly._map) {
-
-			this._map = this._poly._map; // Set map
-
-			if (!this._markerGroup) {
-				this._initMarkers();
-			}
-			this._poly._map.addLayer(this._markerGroup);
-		}
-	},
-
-	// @method removeHooks(): void
-	// Remove listener hooks from this handler.
-	removeHooks: function () {
-		var poly = this._poly;
-
-		poly.setStyle(poly.options.original);
-
-		if (poly._map) {
-			poly._map.removeLayer(this._markerGroup);
-			delete this._markerGroup;
-			delete this._markers;
-		}
-	},
-
-	// @method updateMarkers(): void
-	// Clear markers and update their location
-	updateMarkers: function () {
-		this._markerGroup.clearLayers();
-		this._initMarkers();
-	},
-
-	_initMarkers: function () {
-		if (!this._markerGroup) {
-			this._markerGroup = new L.LayerGroup();
-		}
-		this._markers = [];
-
-		var latlngs = this._defaultShape(),
-			i, j, len, marker;
-
-		for (i = 0, len = latlngs.length; i < len; i++) {
-
-			marker = this._createMarker(latlngs[i], i);
-			marker.on('click', this._onMarkerClick, this);
-			this._markers.push(marker);
-		}
-
-		var markerLeft, markerRight;
-
-		for (i = 0, j = len - 1; i < len; j = i++) {
-			if (i === 0 && !(L.Polygon && (this._poly instanceof L.Polygon))) {
-				continue;
-			}
-
-			markerLeft = this._markers[j];
-			markerRight = this._markers[i];
-
-			this._createMiddleMarker(markerLeft, markerRight);
-			this._updatePrevNext(markerLeft, markerRight);
-		}
-	},
-
-	_createMarker: function (latlng, index) {
-		// Extending L.Marker in TouchEvents.js to include touch.
-		var marker = new L.Marker.Touch(latlng, {
-			draggable: true,
-			icon: this.options.icon,
-		});
-
-		marker._origLatLng = latlng;
-		marker._index = index;
-
-		marker
-			.on('dragstart', this._onMarkerDragStart, this)
-			.on('drag', this._onMarkerDrag, this)
-			.on('dragend', this._fireEdit, this)
-			.on('touchmove', this._onTouchMove, this)
-			.on('touchend', this._fireEdit, this)
-			.on('MSPointerMove', this._onTouchMove, this)
-			.on('MSPointerUp', this._fireEdit, this);
-
-		this._markerGroup.addLayer(marker);
-
-		return marker;
-	},
-
-	_onMarkerDragStart: function () {
-		this._poly.fire('editstart');
-	},
-
-	_spliceLatLngs: function () {
-		var latlngs = this._defaultShape();
-		var removed = [].splice.apply(latlngs, arguments);
-		this._poly._convertLatLngs(latlngs, true);
-		this._poly.redraw();
-		return removed;
-	},
-
-	_removeMarker: function (marker) {
-		var i = marker._index;
-
-		this._markerGroup.removeLayer(marker);
-		this._markers.splice(i, 1);
-		this._spliceLatLngs(i, 1);
-		this._updateIndexes(i, -1);
-
-		marker
-			.off('dragstart', this._onMarkerDragStart, this)
-			.off('drag', this._onMarkerDrag, this)
-			.off('dragend', this._fireEdit, this)
-			.off('touchmove', this._onMarkerDrag, this)
-			.off('touchend', this._fireEdit, this)
-			.off('click', this._onMarkerClick, this)
-			.off('MSPointerMove', this._onTouchMove, this)
-			.off('MSPointerUp', this._fireEdit, this);
-	},
-
-	_fireEdit: function () {
-		this._poly.edited = true;
-		this._poly.fire('edit');
-		this._poly._map.fire(L.Draw.Event.EDITVERTEX, { layers: this._markerGroup, poly: this._poly });
-	},
-
-	_onMarkerDrag: function (e) {
-		var marker = e.target;
-		var poly = this._poly;
-
-		L.extend(marker._origLatLng, marker._latlng);
-
-		if (marker._middleLeft) {
-			marker._middleLeft.setLatLng(this._getMiddleLatLng(marker._prev, marker));
-		}
-		if (marker._middleRight) {
-			marker._middleRight.setLatLng(this._getMiddleLatLng(marker, marker._next));
-		}
-
-		if (poly.options.poly) {
-			var tooltip = poly._map._editTooltip; // Access the tooltip
-
-			// If we don't allow intersections and the polygon intersects
-			if (!poly.options.poly.allowIntersection && poly.intersects()) {
-
-				var originalColor = poly.options.color;
-				poly.setStyle({ color: this.options.drawError.color });
-
-				// Manually trigger 'dragend' behavior on marker we are about to remove
-				// WORKAROUND: introduced in 1.0.0-rc2, may be related to #4484
-				if (L.version.indexOf('0.7') !== 0) {
-					marker.dragging._draggable._onUp(e);
-				}
-				this._onMarkerClick(e); // Remove violating marker
-				// FIXME: Reset the marker to it's original position (instead of remove)
-
-				if (tooltip) {
-					tooltip.updateContent({
-						text: L.drawLocal.draw.handlers.polyline.error
-					});
-				}
-
-				// Reset everything back to normal after a second
-				setTimeout(function () {
-					poly.setStyle({ color: originalColor });
-					if (tooltip) {
-						tooltip.updateContent({
-							text: L.drawLocal.edit.handlers.edit.tooltip.text,
-							subtext: L.drawLocal.edit.handlers.edit.tooltip.subtext
-						});
-					}
-				}, 1000);
-			}
-		}
-
-		this._poly.redraw();
-		this._poly.fire('editdrag');
-	},
-
-	_onMarkerClick: function (e) {
-
-		var minPoints = L.Polygon && (this._poly instanceof L.Polygon) ? 4 : 3,
-			marker = e.target;
-
-		// If removing this point would create an invalid polyline/polygon don't remove
-		if (this._defaultShape().length < minPoints) {
-			return;
-		}
-
-		// remove the marker
-		this._removeMarker(marker);
-
-		// update prev/next links of adjacent markers
-		this._updatePrevNext(marker._prev, marker._next);
-
-		// remove ghost markers near the removed marker
-		if (marker._middleLeft) {
-			this._markerGroup.removeLayer(marker._middleLeft);
-		}
-		if (marker._middleRight) {
-			this._markerGroup.removeLayer(marker._middleRight);
-		}
-
-		// create a ghost marker in place of the removed one
-		if (marker._prev && marker._next) {
-			this._createMiddleMarker(marker._prev, marker._next);
-
-		} else if (!marker._prev) {
-			marker._next._middleLeft = null;
-
-		} else if (!marker._next) {
-			marker._prev._middleRight = null;
-		}
-
-		this._fireEdit();
-	},
-
-	_onTouchMove: function (e) {
-
-		var layerPoint = this._map.mouseEventToLayerPoint(e.originalEvent.touches[0]),
-			latlng = this._map.layerPointToLatLng(layerPoint),
-			marker = e.target;
-
-		L.extend(marker._origLatLng, latlng);
-
-		if (marker._middleLeft) {
-			marker._middleLeft.setLatLng(this._getMiddleLatLng(marker._prev, marker));
-		}
-		if (marker._middleRight) {
-			marker._middleRight.setLatLng(this._getMiddleLatLng(marker, marker._next));
-		}
-
-		this._poly.redraw();
-		this.updateMarkers();
-	},
-
-	_updateIndexes: function (index, delta) {
-		this._markerGroup.eachLayer(function (marker) {
-			if (marker._index > index) {
-				marker._index += delta;
-			}
-		});
-	},
-
-	_createMiddleMarker: function (marker1, marker2) {
-		var latlng = this._getMiddleLatLng(marker1, marker2),
-			marker = this._createMarker(latlng),
-			onClick,
-			onDragStart,
-			onDragEnd;
-
-		marker.setOpacity(0.6);
-
-		marker1._middleRight = marker2._middleLeft = marker;
-
-		onDragStart = function () {
-			marker.off('touchmove', onDragStart, this);
-			var i = marker2._index;
-
-			marker._index = i;
-
-			marker
-				.off('click', onClick, this)
-				.on('click', this._onMarkerClick, this);
-
-			latlng.lat = marker.getLatLng().lat;
-			latlng.lng = marker.getLatLng().lng;
-			this._spliceLatLngs(i, 0, latlng);
-			this._markers.splice(i, 0, marker);
-
-			marker.setOpacity(1);
-
-			this._updateIndexes(i, 1);
-			marker2._index++;
-			this._updatePrevNext(marker1, marker);
-			this._updatePrevNext(marker, marker2);
-
-			this._poly.fire('editstart');
-		};
-
-		onDragEnd = function () {
-			marker.off('dragstart', onDragStart, this);
-			marker.off('dragend', onDragEnd, this);
-			marker.off('touchmove', onDragStart, this);
-
-			this._createMiddleMarker(marker1, marker);
-			this._createMiddleMarker(marker, marker2);
-		};
-
-		onClick = function () {
-			onDragStart.call(this);
-			onDragEnd.call(this);
-			this._fireEdit();
-		};
-
-		marker
-			.on('click', onClick, this)
-			.on('dragstart', onDragStart, this)
-			.on('dragend', onDragEnd, this)
-			.on('touchmove', onDragStart, this);
-
-		this._markerGroup.addLayer(marker);
-	},
-
-	_updatePrevNext: function (marker1, marker2) {
-		if (marker1) {
-			marker1._next = marker2;
-		}
-		if (marker2) {
-			marker2._prev = marker1;
-		}
-	},
-
-	_getMiddleLatLng: function (marker1, marker2) {
-		var map = this._poly._map,
-			p1 = map.project(marker1.getLatLng()),
-			p2 = map.project(marker2.getLatLng());
-
-		return map.unproject(p1._add(p2)._divideBy(2));
-	}
-});
-
-L.Polyline.addInitHook(function () {
-
-	// Check to see if handler has already been initialized. This is to support versions of Leaflet that still have L.Handler.PolyEdit
-	if (this.editing) {
-		return;
-	}
-
-	if (L.Edit.Poly) {
-
-		this.editing = new L.Edit.Poly(this, this.options.poly);
-
-		if (this.options.editable) {
-			this.editing.enable();
-		}
-	}
-
-	this.on('add', function () {
-		if (this.editing && this.editing.enabled()) {
-			this.editing.addHooks();
-		}
-	});
-
-	this.on('remove', function () {
-		if (this.editing && this.editing.enabled()) {
-			this.editing.removeHooks();
-		}
-	});
-});
-
-
-
-L.Edit = L.Edit || {};
 /**
  * @class L.Edit.SimpleShape
  * @aka Edit.SimpleShape
@@ -2224,6 +1731,14 @@ L.Edit.SimpleShape = L.Handler.extend({
 			iconSize: new L.Point(20, 20),
 			className: 'leaflet-div-icon leaflet-editing-icon leaflet-edit-resize leaflet-touch-icon'
 		}),
+        rotateIcon : new L.DivIcon({
+            iconSize : new L.Point(8, 8),
+            className : 'leaflet-div-icon leaflet-editing-icon leaflet-edit-rotate'
+        }),
+        edgeIcon : new L.DivIcon({
+            iconSize: new L.Point(8, 8),
+            className: 'leaflet-div-icon leaflet-editing-icon'
+        })
 	},
 
 	// @method intialize(): void
@@ -2265,6 +1780,7 @@ L.Edit.SimpleShape = L.Handler.extend({
 
 		if (shape._map) {
 			this._unbindMarker(this._moveMarker);
+			this._unbindMarker(this._rotateMarker);
 
 			for (var i = 0, l = this._resizeMarkers.length; i < l; i++) {
 				this._unbindMarker(this._resizeMarkers[i]);
@@ -2293,6 +1809,9 @@ L.Edit.SimpleShape = L.Handler.extend({
 		// Create center marker
 		this._createMoveMarker();
 
+		// Create rotate marker
+		this._createRotateMarker();
+
 		// Create edge marker
 		this._createResizeMarker();
 	},
@@ -2301,16 +1820,28 @@ L.Edit.SimpleShape = L.Handler.extend({
 		// Children override
 	},
 
+    _createRotateMarker: function () {
+        // Children override
+    },
+
 	_createResizeMarker: function () {
 		// Children override
 	},
 
-	_createMarker: function (latlng, icon) {
+	_createMarker: function (latlng, icon, dx, dy) {
+
+		if (dx === undefined) {
+			dx = 0;
+			dy = 0;
+		}
+
 		// Extending L.Marker in TouchEvents.js to include touch.
-		var marker = new L.Marker.Touch(latlng, {
+		var marker = new L.MarkerExt(latlng, {
 			draggable: true,
 			icon: icon,
-			zIndexOffset: 10
+			zIndexOffset: 10,
+			dx: dx,
+			dy: dy
 		});
 
 		this._bindMarker(marker);
@@ -2362,6 +1893,8 @@ L.Edit.SimpleShape = L.Handler.extend({
 
 		if (marker === this._moveMarker) {
 			this._move(latlng);
+        } else if (marker === this._rotateMarker) {
+            this._rotate(latlng);
 		} else {
 			this._resize(latlng);
 		}
@@ -2428,137 +1961,461 @@ L.Edit.SimpleShape = L.Handler.extend({
 
 	_resize: function () {
 		// Children override
-	}
+	},
+
+    _rotate: function () {
+        // Children override
+    }
 });
 
 
 
 L.Edit = L.Edit || {};
-/**
- * @class L.Edit.Rectangle
- * @aka Edit.Rectangle
- * @inherits L.Edit.SimpleShape
+
+L.Edit.Path = L.Edit.SimpleShape.extend({
+
+    _createMoveMarker: function () {
+        this._moveMarker = this._createMarker(this._getCenter(), this.options.moveIcon);
+    },
+
+    _createResizeMarker: function () {
+        var corners = this._getCorners();
+
+        this._resizeMarkers = [];
+
+        for (var i = 0, l = corners.length; i < l; i++) {
+            this._resizeMarkers.push(this._createMarker(corners[i], this.options.resizeIcon));
+            // Monkey in the corner index as we will need to know this for dragging
+            this._resizeMarkers[i]._cornerIndex = i;
+        }
+    },
+
+    _createRotateMarker: function () {
+        var center = this._getCenter();
+
+        this._rotateMarker = this._createMarker(center, this.options.rotateIcon, 0, -100);
+        this._rotateLine = L.lineMarker(center, 0, -100,{
+            dashArray: [10, 7],
+            color: 'black',
+            weight: 2
+        });
+        this._angle = 0;
+
+        this._bindMarker(this._rotateLine);
+        this._markerGroup.addLayer(this._rotateLine);
+    },
+
+    _onMarkerDragStart: function (e) {
+        L.Edit.SimpleShape.prototype._onMarkerDragStart.call(this, e);
+
+        // save references to the original shape
+        this._origLatLngs = this._shape.getLatLngs();
+        this._origCenter = this._getCenter();
+        this._origAngle = this._angle;
+
+        // Save a reference to the current and opposite point of the resize rectangle
+        var corners = this._getCorners(),
+            marker = e.target,
+            currentCornerIndex = marker._cornerIndex;
+
+        this._oppositeCorner = corners[(currentCornerIndex + 2) % 4];
+        this._currentCorner = corners[currentCornerIndex];
+
+        this._toggleCornerMarkers(0, currentCornerIndex);
+    },
+
+    _onMarkerDragEnd: function (e) {
+
+        this._toggleCornerMarkers(1);
+
+        this._repositionAllMarkers();
+
+        L.Edit.SimpleShape.prototype._onMarkerDragEnd.call(this, e);
+    },
+
+    _move: function (newCenter) {
+        // create translate transform
+        var tx = new L.AffineTransform(this._getPrjs()).move(this._origCenter, newCenter);
+
+        // transform points
+        this._shape.setLatLngs(tx.apply(this._origLatLngs));
+
+        // Reposition all markers
+        this._repositionAllMarkers();
+    },
+
+    _resize: function (latlng) {
+        // create resize transform
+        var tx = new L.AffineTransform(this._getPrjs()).resize(this._oppositeCorner, this._currentCorner, latlng);
+
+        // transform points
+        this._shape.setLatLngs(tx.apply(this._origLatLngs));
+
+        // Reposition all markers
+        this._repositionAllMarkers();
+    },
+
+    _rotate: function (latlng) {
+        // create rotate transform
+        var tx = new L.AffineTransform(this._getPrjs()).rotateFrom(this._origAngle - Math.PI/2, this._origCenter, latlng);
+        this._angle = this._origAngle + tx.getAngle();
+
+        // transform points
+        this._shape.setLatLngs(tx.apply(this._origLatLngs));
+
+        // Reposition all markers
+        this._repositionAllMarkers();
+    },
+
+    _getCorners: function () {
+        var bounds = this._shape.getBounds(),
+            nw = bounds.getNorthWest(),
+            ne = bounds.getNorthEast(),
+            se = bounds.getSouthEast(),
+            sw = bounds.getSouthWest();
+
+        return [nw, ne, se, sw];
+    },
+
+    _toggleCornerMarkers: function (opacity) {
+        for (var i = 0, l = this._resizeMarkers.length; i < l; i++) {
+            this._resizeMarkers[i].setOpacity(opacity);
+        }
+    },
+
+    _repositionAllMarkers: function () {
+        var corners = this._getCorners();
+
+        for (var i = 0, l = this._resizeMarkers.length; i < l; i++) {
+            this._resizeMarkers[i].setLatLng(corners[i]);
+        }
+
+        this._moveMarker.setLatLng(this._getCenter());
+
+        var dx = 100 * Math.sin(this._angle), dy = -100 * Math.cos(this._angle);
+
+        this._rotateMarker.setLatLng(this._getCenter());
+        this._rotateMarker.setOffset(dx, dy);
+
+        this._rotateLine.setLatLng(this._getCenter());
+        this._rotateLine.setMoveTo(dx, dy);
+
+    },
+
+    _getPrjs: function() {
+        var self = this;
+        return {
+            pre : function(latLng) {
+                if (L.Util.isArray(latLng)) {
+                    var result = [], i, length = latLng.length;
+                    for (i = 0; i < length; i++) {
+                        result.push(self._map.project(latLng[i]));
+                    }
+                    return result;
+                } else {
+                    return self._map.project(latLng);
+                }
+            },
+            post : function(pt) {
+                if (L.Util.isArray(pt)) {
+                    var result = [], i, length = pt.length;
+                    for (i = 0; i < length; i++) {
+                        result.push(self._map.unproject(pt[i]));
+                    }
+                    return result;
+                } else {
+                    return self._map.unproject(pt);
+                }
+            }
+        };
+    },
+
+    _getCenter : function() {
+        var center = L.point(0,0);
+        var prjs = this._getPrjs();
+        var pts = prjs.pre(this._shape.getLatLngs());
+        for (var i = 0; i < pts.length; i++) {
+            center._add(pts[i]);
+        }
+        return prjs.post(center._divideBy(pts.length));
+    }
+});
+
+
+L.Edit = L.Edit || {};
+
+/*
+ * L.Edit.Poly is an editing handler for polylines and polygons.
  */
-L.Edit.Rectangle = L.Edit.SimpleShape.extend({
-	_createMoveMarker: function () {
-		var bounds = this._shape.getBounds(),
-			center = bounds.getCenter();
 
-		this._moveMarker = this._createMarker(center, this.options.moveIcon);
-	},
+L.Edit.Poly = L.Edit.Path.extend({
 
-	_createResizeMarker: function () {
-		var corners = this._getCorners();
+    _initMarkers : function() {
+        L.Edit.Path.prototype._initMarkers.call(this);
+        this._createEdgeMarkers();
+    },
 
-		this._resizeMarkers = [];
+    _createEdgeMarkers: function () {
+        this._markers = [];
 
-		for (var i = 0, l = corners.length; i < l; i++) {
-			this._resizeMarkers.push(this._createMarker(corners[i], this.options.resizeIcon));
-			// Monkey in the corner index as we will need to know this for dragging
-			this._resizeMarkers[i]._cornerIndex = i;
-		}
-	},
+        var latlngs = this._shape._latlngs,
+            i, j, len, marker;
 
-	_onMarkerDragStart: function (e) {
-		L.Edit.SimpleShape.prototype._onMarkerDragStart.call(this, e);
+        // TODO refactor holes implementation in Polygon to support it here
 
-		// Save a reference to the opposite point
-		var corners = this._getCorners(),
-			marker = e.target,
-			currentCornerIndex = marker._cornerIndex;
+        for (i = 0, len = latlngs.length; i < len; i++) {
 
-		this._oppositeCorner = corners[(currentCornerIndex + 2) % 4];
+            marker = this._createEdgeMarker(latlngs[i], i);
+            marker.on('click', this._onMarkerClick, this);
+            this._markers.push(marker);
+        }
 
-		this._toggleCornerMarkers(0, currentCornerIndex);
-	},
+        var markerLeft, markerRight;
 
-	_onMarkerDragEnd: function (e) {
-		var marker = e.target,
-			bounds, center;
+        for (i = 0, j = len - 1; i < len; j = i++) {
+            if (i === 0 && !(L.Polygon && (this._shape instanceof L.Polygon))) {
+                continue;
+            }
 
-		// Reset move marker position to the center
-		if (marker === this._moveMarker) {
-			bounds = this._shape.getBounds();
-			center = bounds.getCenter();
+            markerLeft = this._markers[j];
+            markerRight = this._markers[i];
 
-			marker.setLatLng(center);
-		}
+            this._createMiddleMarker(markerLeft, markerRight);
+            this._updatePrevNext(markerLeft, markerRight);
+        }
+    },
 
-		this._toggleCornerMarkers(1);
+    _createEdgeMarker: function (latlng, index) {
+        var marker = new L.Marker(latlng, {
+            draggable: true,
+            icon: this.options.edgeIcon
+        });
 
-		this._repositionCornerMarkers();
+        marker._origLatLng = latlng;
+        marker._index = index;
 
-		L.Edit.SimpleShape.prototype._onMarkerDragEnd.call(this, e);
-	},
+        marker.on('drag', this._onEdgeMarkerDrag, this);
+        marker.on('dragend', this._fireEdit, this);
 
-	_move: function (newCenter) {
-		var latlngs = this._shape._defaultShape ? this._shape._defaultShape() : this._shape.getLatLngs(),
-			bounds = this._shape.getBounds(),
-			center = bounds.getCenter(),
-			offset, newLatLngs = [];
+        this._markerGroup.addLayer(marker);
 
-		// Offset the latlngs to the new center
-		for (var i = 0, l = latlngs.length; i < l; i++) {
-			offset = [latlngs[i].lat - center.lat, latlngs[i].lng - center.lng];
-			newLatLngs.push([newCenter.lat + offset[0], newCenter.lng + offset[1]]);
-		}
+        return marker;
+    },
 
-		this._shape.setLatLngs(newLatLngs);
+    _removeMarker: function (marker) {
+        var i = marker._index;
 
-		// Reposition the resize markers
-		this._repositionCornerMarkers();
+        this._markerGroup.removeLayer(marker);
+        this._markers.splice(i, 1);
+        this._shape.spliceLatLngs(i, 1);
+        this._updateIndexes(i, -1);
+        this._repositionAllMarkers();
 
-		this._map.fire(L.Draw.Event.EDITMOVE, { layer: this._shape });
-	},
+        marker
+            .off('drag', this._onEdgeMarkerDrag, this)
+            .off('dragend', this._fireEdit, this)
+            .off('click', this._onMarkerClick, this);
+    },
 
-	_resize: function (latlng) {
-		var bounds;
+    _onEdgeMarkerDrag: function (e) {
+        var marker = e.target;
 
-		// Update the shape based on the current position of this corner and the opposite point
-		this._shape.setBounds(L.latLngBounds(latlng, this._oppositeCorner));
+        L.extend(marker._origLatLng, marker._latlng);
 
-		// Reposition the move marker
-		bounds = this._shape.getBounds();
-		this._moveMarker.setLatLng(bounds.getCenter());
+        if (marker._middleLeft) {
+            marker._middleLeft.setLatLng(this._getMiddleLatLng(marker._prev, marker));
+        }
+        if (marker._middleRight) {
+            marker._middleRight.setLatLng(this._getMiddleLatLng(marker, marker._next));
+        }
+        this._shape.getLatLngs()[marker._index] = marker._latlng;
+        this._shape.redraw();
+        this._repositionAllMarkers();
+    },
 
-		this._map.fire(L.Draw.Event.EDITRESIZE, { layer: this._shape });
-	},
+    _onMarkerClick: function (e) {
+        var minPoints = L.Polygon && (this._shape instanceof L.Polygon) ? 4 : 3,
+            marker = e.target;
 
-	_getCorners: function () {
-		var bounds = this._shape.getBounds(),
-			nw = bounds.getNorthWest(),
-			ne = bounds.getNorthEast(),
-			se = bounds.getSouthEast(),
-			sw = bounds.getSouthWest();
+        // If removing this point would create an invalid polyline/polygon don't remove
+        if (this._shape._latlngs.length < minPoints) {
+            return;
+        }
 
-		return [nw, ne, se, sw];
-	},
+        // remove the marker
+        this._removeMarker(marker);
 
-	_toggleCornerMarkers: function (opacity) {
-		for (var i = 0, l = this._resizeMarkers.length; i < l; i++) {
-			this._resizeMarkers[i].setOpacity(opacity);
-		}
-	},
+        // update prev/next links of adjacent markers
+        this._updatePrevNext(marker._prev, marker._next);
 
-	_repositionCornerMarkers: function () {
-		var corners = this._getCorners();
+        // remove ghost markers near the removed marker
+        if (marker._middleLeft) {
+            this._markerGroup.removeLayer(marker._middleLeft);
+        }
+        if (marker._middleRight) {
+            this._markerGroup.removeLayer(marker._middleRight);
+        }
 
-		for (var i = 0, l = this._resizeMarkers.length; i < l; i++) {
-			this._resizeMarkers[i].setLatLng(corners[i]);
-		}
-	}
+        // create a ghost marker in place of the removed one
+        if (marker._prev && marker._next) {
+            this._createMiddleMarker(marker._prev, marker._next);
+
+        } else if (!marker._prev) {
+            marker._next._middleLeft = null;
+
+        } else if (!marker._next) {
+            marker._prev._middleRight = null;
+        }
+
+        this._fireEdit();
+    },
+
+    _updateIndexes: function (index, delta) {
+        this._markerGroup.eachLayer(function (marker) {
+            if (marker._index > index) {
+                marker._index += delta;
+            }
+        });
+    },
+
+    _createMiddleMarker: function (marker1, marker2) {
+        var latlng = this._getMiddleLatLng(marker1, marker2),
+            marker = this._createEdgeMarker(latlng),
+            onClick,
+            onDragStart,
+            onDragEnd;
+
+        marker.setOpacity(0.6);
+
+        marker1._middleRight = marker2._middleLeft = marker;
+
+        onDragStart = function () {
+            var i = marker2._index;
+
+            marker._index = i;
+
+            marker
+                .off('click', onClick, this)
+                .on('click', this._onMarkerClick, this);
+
+            latlng.lat = marker.getLatLng().lat;
+            latlng.lng = marker.getLatLng().lng;
+            this._shape.spliceLatLngs(i, 0, latlng);
+            this._markers.splice(i, 0, marker);
+
+            marker.setOpacity(1);
+
+            this._updateIndexes(i, 1);
+            marker2._index++;
+            this._updatePrevNext(marker1, marker);
+            this._updatePrevNext(marker, marker2);
+
+            this._shape.fire('editstart');
+        };
+
+        onDragEnd = function () {
+            marker.off('dragstart', onDragStart, this);
+            marker.off('dragend', onDragEnd, this);
+
+            this._createMiddleMarker(marker1, marker);
+            this._createMiddleMarker(marker, marker2);
+        };
+
+        onClick = function () {
+            onDragStart.call(this);
+            onDragEnd.call(this);
+            this._fireEdit();
+        };
+
+        marker
+            .on('click', onClick, this)
+            .on('dragstart', onDragStart, this)
+            .on('dragend', onDragEnd, this);
+
+        this._markerGroup.addLayer(marker);
+    },
+
+    _updatePrevNext: function (marker1, marker2) {
+        if (marker1) {
+            marker1._next = marker2;
+        }
+        if (marker2) {
+            marker2._prev = marker1;
+        }
+    },
+
+    _getMiddleLatLng: function (marker1, marker2) {
+        var map = this._shape._map,
+            p1 = map.project(marker1.getLatLng()),
+            p2 = map.project(marker2.getLatLng());
+
+        return map.unproject(p1._add(p2)._divideBy(2));
+    },
+
+    _repositionAllMarkers: function () {
+        L.Edit.Path.prototype._repositionAllMarkers.call(this);
+
+        // reposition edge markers
+        for(var i = 0; i < this._markers.length; i++) {
+            var i1 = i, i2 = (i+1) % this._markers.length;
+            var marker1 = this._markers[i1];
+            var marker2 = this._markers[i2];
+            marker1.setLatLng(this._shape._latlngs[i1]);
+            marker2.setLatLng(this._shape._latlngs[i2]);
+            if(marker1._middleRight) {
+                marker1._middleRight.setLatLng(this._getMiddleLatLng(marker1, marker2));
+            }
+        }
+    }
+
+});
+
+L.Polyline.addInitHook(function () {
+
+    // Check to see if handler has already been initialized. This is to support versions of Leaflet that still have L.Handler.PolyEdit
+    if (this.editing) {
+        return;
+    }
+
+    if (L.Edit.Poly) {
+        this.editing = new L.Edit.Poly(this);
+
+        if (this.options.editable) {
+            this.editing.enable();
+        }
+    }
+
+    this.on('add', function () {
+        if (this.editing && this.editing.enabled()) {
+            this.editing.addHooks();
+        }
+    });
+
+    this.on('remove', function () {
+        if (this.editing && this.editing.enabled()) {
+            this.editing.removeHooks();
+        }
+    });
+});
+
+
+L.Edit = L.Edit || {};
+
+L.Edit.Rectangle = L.Edit.Path.extend({
+
+// TODO: keep rectangular after rotate !!
+
 });
 
 L.Rectangle.addInitHook(function () {
-	if (L.Edit.Rectangle) {
-		this.editing = new L.Edit.Rectangle(this);
+    if (L.Edit.Rectangle) {
+        this.editing = new L.Edit.Rectangle(this);
 
-		if (this.options.editable) {
-			this.editing.enable();
-		}
-	}
+        if (this.options.editable) {
+            this.editing.enable();
+        }
+    }
 });
-
 
 
 L.Edit = L.Edit || {};
@@ -3267,6 +3124,197 @@ L.Polygon.include({
 	}
 });
 
+
+
+/**
+ * A marker that has a fixed pixel offset w.r.t. its marker position.
+ *
+ */
+L.MarkerExt = L.Marker.extend({
+
+    options: {
+        dx: 0,
+        dy: 0
+    },
+
+    initialize: function (latlng, options) {
+        L.Marker.prototype.initialize.call(this, latlng, options);
+        this._dx = this.options.dx;
+        this._dy = this.options.dy;
+    },
+
+    setOffset: function(dx, dy) {
+        this._dx = dx;
+        this._dy = dy;
+        this.update();
+    },
+
+    _setPos : function (pos) {
+        pos.x += this._dx;
+        pos.y += this._dy;
+        L.Marker.prototype._setPos.call(this, pos);
+    }
+
+});
+
+L.markerExt = function (latlng, options) {
+    return new L.MarkerExt(latlng, options);
+};
+
+
+/**
+ * Transform based on a 3 x 3 matrix manipulation (covers rotation, translation and scaling).
+ */
+L.AffineTransform = L.Class.extend({
+
+    initialize: function (options) {
+        this._array = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+        this._pre = options.pre || function(x) {return x;};
+        this._post = options.post || function(x) {return x;};
+        this._angle = 0;
+    },
+
+    scale: function (sx, sy) {
+        this._array = this._multiply([[sx, 0, 0], [0, sy, 0], [0, 0, 1]], this._array);
+        return this;
+    },
+
+    translate: function (dx, dy) {
+        this._array = this._multiply([[1, 0, dx], [0, 1, dy], [0, 0, 1]], this._array);
+        return this;
+    },
+
+
+    rotate: function (angle) {
+        var cos = Math.cos(angle), sin = Math.sin(angle);
+        this._array = this._multiply([[cos, -sin, 0], [sin, cos, 0], [0, 0, 1]], this._array);
+        this._angle += angle;
+        return this;
+    },
+
+    move: function(pt1, pt2) {
+        pt1 = this._pre(pt1);
+        pt2 = this._pre(pt2);
+        return this.translate(pt2.x - pt1.x, pt2.y - pt1.y);
+    },
+
+    rotateFrom: function (fromAngle, origin, pt) {
+        origin = this._pre(origin);
+        pt = this._pre(pt);
+        var angle = Math.atan2(pt.y - origin.y, pt.x - origin.x);
+        return this.translate(-origin.x, -origin.y).
+        rotate(angle - fromAngle).
+        translate(origin.x, origin.y);
+    },
+
+    resize: function(origin, pt1, pt2) {
+        origin = this._pre(origin);
+        pt1 = this._pre(pt1);
+        pt2 = this._pre(pt2);
+
+        // translate so the opposite corner becomes the new origin
+        this.translate(-origin.x, -origin.y);
+
+        // resizing by moving corner pt1 to pt2 is now a simple scale operation along x and y-axis
+        var f = this._applyPts(pt1);
+        var t = this._applyPts(pt2);
+        var scaleX = (t.x / f.x);
+        var scaleY = (t.y / f.y);
+
+        // guard against zero-division or too small values
+        if(!isFinite(scaleX) || Math.abs(scaleX) < 1E-7) {
+            scaleX = 1;
+        }
+        if (!isFinite(scaleY) || Math.abs(scaleY) < 1E-7) {
+            scaleY = 1;
+        }
+        // perform the scale operation and translate back
+        return this.scale(scaleX, scaleY).translate(origin.x, origin.y);
+    },
+
+    getAngle: function () {
+        return this._angle;
+    },
+
+    apply: function (pts) {
+        return this._post(this._applyPts(this._pre(pts)));
+    },
+
+    _applyPts : function (pts) {
+        if (L.Util.isArray(pts)) {
+            var result = [], i, length = pts.length;
+            for (i = 0; i < length; i++) {
+                result.push(this._applyPts(pts[i]));
+            }
+            return result;
+        } else {
+            var xyz = this._applyXYZ([pts.x, pts.y, 1]);
+            return L.point(xyz[0], xyz[1]);
+        }
+    },
+
+    _applyXYZ: function (xyz) {
+        var result = [], i, j, sum;
+        for (i = 0; i < 3; i++) {
+            result[i] = 0;
+            for (j = 0; j < 3; j++) {
+                result[i] += this._array[i][j]*xyz[j];
+            }
+        }
+        return result;
+    },
+
+    _multiply: function (m1, m2) {
+        var result = [], i, j, sum;
+        for (i = 0; i < 3; i++) {
+            result[i] = [];
+            for (j = 0; j < 3; j++) {
+                result[i][j] = 0;
+                for (k = 0; k < 3; k++) {
+                    result[i][j] += m1[i][k] * m2[k][j];
+                }
+            }
+        }
+        return result;
+    }
+
+});
+
+
+/**
+ * A marker that has a fixed pixel offset w.r.t. its marker position.
+ *
+ */
+L.MarkerExt = L.Marker.extend({
+
+    options: {
+        dx: 0,
+        dy: 0
+    },
+
+    initialize: function (latlng, options) {
+        L.Marker.prototype.initialize.call(this, latlng, options);
+        this._dx = this.options.dx;
+        this._dy = this.options.dy;
+    },
+
+    setOffset: function(dx, dy) {
+        this._dx = dx;
+        this._dy = dy;
+        this.update();
+    },
+
+    _setPos : function (pos) {
+        pos.x += this._dx;
+        pos.y += this._dy;
+        L.Marker.prototype._setPos.call(this, pos);
+    }
+
+});
+
+L.markerExt = function (latlng, options) {
+    return new L.MarkerExt(latlng, options);
+};
 
 
 /**
