@@ -21,14 +21,6 @@ L.Edit.SimpleShape = L.Handler.extend({
 			iconSize: new L.Point(20, 20),
 			className: 'leaflet-div-icon leaflet-editing-icon leaflet-edit-resize leaflet-touch-icon'
 		}),
-        rotateIcon : new L.DivIcon({
-            iconSize : new L.Point(8, 8),
-            className : 'leaflet-div-icon leaflet-editing-icon leaflet-edit-rotate'
-        }),
-        edgeIcon : new L.DivIcon({
-            iconSize: new L.Point(8, 8),
-            className: 'leaflet-div-icon leaflet-editing-icon'
-        })
 	},
 
 	// @method intialize(): void
@@ -70,7 +62,6 @@ L.Edit.SimpleShape = L.Handler.extend({
 
 		if (shape._map) {
 			this._unbindMarker(this._moveMarker);
-			this._unbindMarker(this._rotateMarker);
 
 			for (var i = 0, l = this._resizeMarkers.length; i < l; i++) {
 				this._unbindMarker(this._resizeMarkers[i]);
@@ -99,9 +90,6 @@ L.Edit.SimpleShape = L.Handler.extend({
 		// Create center marker
 		this._createMoveMarker();
 
-		// Create rotate marker
-		this._createRotateMarker();
-
 		// Create edge marker
 		this._createResizeMarker();
 	},
@@ -110,28 +98,16 @@ L.Edit.SimpleShape = L.Handler.extend({
 		// Children override
 	},
 
-    _createRotateMarker: function () {
-        // Children override
-    },
-
 	_createResizeMarker: function () {
 		// Children override
 	},
 
-	_createMarker: function (latlng, icon, dx, dy) {
-
-		if (dx === undefined) {
-			dx = 0;
-			dy = 0;
-		}
-
+	_createMarker: function (latlng, icon) {
 		// Extending L.Marker in TouchEvents.js to include touch.
-		var marker = new L.Marker.TouchExt(latlng, {
+		var marker = new L.Marker.Touch(latlng, {
 			draggable: true,
 			icon: icon,
-			zIndexOffset: 10,
-			dx: dx,
-			dy: dy
+			zIndexOffset: 10
 		});
 
 		this._bindMarker(marker);
@@ -183,8 +159,6 @@ L.Edit.SimpleShape = L.Handler.extend({
 
 		if (marker === this._moveMarker) {
 			this._move(latlng);
-        } else if (marker === this._rotateMarker) {
-            this._rotate(latlng);
 		} else {
 			this._resize(latlng);
 		}
@@ -251,9 +225,5 @@ L.Edit.SimpleShape = L.Handler.extend({
 
 	_resize: function () {
 		// Children override
-	},
-
-    _rotate: function () {
-        // Children override
-    }
+	}
 });

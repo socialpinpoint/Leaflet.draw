@@ -26,7 +26,6 @@ var deps = {
 		src: [
 			'edit/handler/Edit.Marker.js',
             'edit/handler/Edit.SimpleShape.js',
-            'edit/handler/Edit.Path.js',
 			'edit/handler/Edit.Poly.js',
 			'edit/handler/Edit.Rectangle.js',
 			'edit/handler/Edit.Circle.js'
@@ -43,9 +42,9 @@ var deps = {
 			'ext/LineUtil.Intersect.js',
 			'ext/Polyline.Intersect.js',
 			'ext/Polygon.Intersect.js',
-            'ext/Marker.TouchExt.js',
-            'ext/AffineTransform.js',
-            'ext/LineMarker.js',
+			'ext/Marker.TouchExt.js',
+			'ext/AffineTransform.js',
+			'ext/LineMarker.js',
 		],
 		desc: 'Extensions of leaflet classes.'
 	},

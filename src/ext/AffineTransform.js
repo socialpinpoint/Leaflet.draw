@@ -101,7 +101,7 @@ L.AffineTransform = L.Class.extend({
     },
 
     _multiply: function (m1, m2) {
-        var result = [], i, j, sum;
+        var result = [], i, j, k;
         for (i = 0; i < 3; i++) {
             result[i] = [];
             for (j = 0; j < 3; j++) {
