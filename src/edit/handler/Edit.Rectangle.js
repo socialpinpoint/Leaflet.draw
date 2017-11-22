@@ -5,12 +5,10 @@ L.Edit = L.Edit || {};
  * @inherits L.Edit.SimpleShape
  */
 L.Edit.Rectangle = L.Edit.SimpleShape.extend({
-	_createMoveMarker: function () {
-		var bounds = this._shape.getBounds(),
-			center = bounds.getCenter();
 
-		this._moveMarker = this._createMarker(center, this.options.moveIcon);
-	},
+    _createMoveMarker: function () {
+        this._moveMarker = this._createMarker(this._getCenter(), this.options.moveIcon);
+    },
 
 	_createResizeMarker: function () {
 		var corners = this._getCorners();
@@ -24,70 +22,81 @@ L.Edit.Rectangle = L.Edit.SimpleShape.extend({
 		}
 	},
 
+    _createRotateMarker: function () {
+        var center = this._getCenter();
+
+        this._rotateMarker = this._createMarker(center, this.options.rotateIcon, 0, -100);
+        this._rotateLine = L.lineMarker(center, 0, -100,{
+            dashArray: [10, 7],
+            color: 'black',
+            weight: 2
+        });
+        this._angle = 0;
+
+        this._bindMarker(this._rotateLine);
+        this._markerGroup.addLayer(this._rotateLine);
+    },
+
 	_onMarkerDragStart: function (e) {
-		L.Edit.SimpleShape.prototype._onMarkerDragStart.call(this, e);
+        L.Edit.SimpleShape.prototype._onMarkerDragStart.call(this, e);
 
-		// Save a reference to the opposite point
-		var corners = this._getCorners(),
-			marker = e.target,
-			currentCornerIndex = marker._cornerIndex;
+        // save references to the original shape
+        this._origLatLngs = this._shape.getLatLngs();
+        this._origCenter = this._getCenter();
+        this._origAngle = this._angle;
 
-		this._oppositeCorner = corners[(currentCornerIndex + 2) % 4];
+        // Save a reference to the current and opposite point of the resize rectangle
+        var corners = this._getCorners(),
+            marker = e.target,
+            currentCornerIndex = marker._cornerIndex;
 
-		this._toggleCornerMarkers(0, currentCornerIndex);
+        this._oppositeCorner = corners[(currentCornerIndex + 2) % 4];
+        this._currentCorner = corners[currentCornerIndex];
+
+        this._toggleCornerMarkers(0, currentCornerIndex);
 	},
 
 	_onMarkerDragEnd: function (e) {
-		var marker = e.target,
-			bounds, center;
-
-		// Reset move marker position to the center
-		if (marker === this._moveMarker) {
-			bounds = this._shape.getBounds();
-			center = bounds.getCenter();
-
-			marker.setLatLng(center);
-		}
-
 		this._toggleCornerMarkers(1);
 
-		this._repositionCornerMarkers();
+        this._repositionAllMarkers();
 
-		L.Edit.SimpleShape.prototype._onMarkerDragEnd.call(this, e);
+        L.Edit.SimpleShape.prototype._onMarkerDragEnd.call(this, e);
 	},
 
-	_move: function (newCenter) {
-		var latlngs = this._shape._defaultShape ? this._shape._defaultShape() : this._shape.getLatLngs(),
-			bounds = this._shape.getBounds(),
-			center = bounds.getCenter(),
-			offset, newLatLngs = [];
+    _move: function (newCenter) {
+        // create translate transform
+        var tx = new L.AffineTransform(this._getPrjs()).move(this._origCenter, newCenter);
 
-		// Offset the latlngs to the new center
-		for (var i = 0, l = latlngs.length; i < l; i++) {
-			offset = [latlngs[i].lat - center.lat, latlngs[i].lng - center.lng];
-			newLatLngs.push([newCenter.lat + offset[0], newCenter.lng + offset[1]]);
-		}
+        // transform points
+        this._shape.setLatLngs(tx.apply(this._origLatLngs));
 
-		this._shape.setLatLngs(newLatLngs);
+        // Reposition all markers
+        this._repositionAllMarkers();
+    },
 
-		// Reposition the resize markers
-		this._repositionCornerMarkers();
+    _resize: function (latlng) {
+        // create resize transform
+        var tx = new L.AffineTransform(this._getPrjs()).resize(this._oppositeCorner, this._currentCorner, latlng);
 
-		this._map.fire(L.Draw.Event.EDITMOVE, { layer: this._shape });
-	},
+        // transform points
+        this._shape.setLatLngs(tx.apply(this._origLatLngs));
 
-	_resize: function (latlng) {
-		var bounds;
+        // Reposition all markers
+        this._repositionAllMarkers();
+    },
 
-		// Update the shape based on the current position of this corner and the opposite point
-		this._shape.setBounds(L.latLngBounds(latlng, this._oppositeCorner));
+    _rotate: function (latlng) {
+        // create rotate transform
+        var tx = new L.AffineTransform(this._getPrjs()).rotateFrom(this._origAngle - Math.PI/2, this._origCenter, latlng);
+        this._angle = this._origAngle + tx.getAngle();
 
-		// Reposition the move marker
-		bounds = this._shape.getBounds();
-		this._moveMarker.setLatLng(bounds.getCenter());
+        // transform points
+        this._shape.setLatLngs(tx.apply(this._origLatLngs));
 
-		this._map.fire(L.Draw.Event.EDITRESIZE, { layer: this._shape });
-	},
+        // Reposition all markers
+        this._repositionAllMarkers();
+    },
 
 	_getCorners: function () {
 		var bounds = this._shape.getBounds(),
@@ -105,13 +114,61 @@ L.Edit.Rectangle = L.Edit.SimpleShape.extend({
 		}
 	},
 
-	_repositionCornerMarkers: function () {
-		var corners = this._getCorners();
+    _repositionAllMarkers: function () {
+        var corners = this._getCorners();
 
-		for (var i = 0, l = this._resizeMarkers.length; i < l; i++) {
-			this._resizeMarkers[i].setLatLng(corners[i]);
-		}
-	}
+        for (var i = 0, l = this._resizeMarkers.length; i < l; i++) {
+            this._resizeMarkers[i].setLatLng(corners[i]);
+        }
+
+        this._moveMarker.setLatLng(this._getCenter());
+
+        var dx = 100 * Math.sin(this._angle), dy = -100 * Math.cos(this._angle);
+
+        this._rotateMarker.setLatLng(this._getCenter());
+        this._rotateMarker.setOffset(dx, dy);
+
+        this._rotateLine.setLatLng(this._getCenter());
+        this._rotateLine.setMoveTo(dx, dy);
+    },
+
+    _getPrjs: function() {
+        var self = this;
+        return {
+            pre : function(latLng) {
+                if (L.Util.isArray(latLng)) {
+                    var result = [], i, length = latLng.length;
+                    for (i = 0; i < length; i++) {
+                        result.push(self._map.project(latLng[i]));
+                    }
+                    return result;
+                } else {
+                    return self._map.project(latLng);
+                }
+            },
+            post : function(pt) {
+                if (L.Util.isArray(pt)) {
+                    var result = [], i, length = pt.length;
+                    for (i = 0; i < length; i++) {
+                        result.push(self._map.unproject(pt[i]));
+                    }
+                    return result;
+                } else {
+                    return self._map.unproject(pt);
+                }
+            }
+        };
+    },
+
+    _getCenter : function() {
+        var center = L.point(0,0);
+        var prjs = this._getPrjs();
+        var pts = prjs.pre(this._shape.getLatLngs());
+        for (var i = 0; i < pts.length; i++) {
+            center._add(pts[i]);
+        }
+        return prjs.post(center._divideBy(pts.length));
+    }
 });
 
 L.Rectangle.addInitHook(function () {
