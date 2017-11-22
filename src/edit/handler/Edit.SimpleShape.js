@@ -126,7 +126,7 @@ L.Edit.SimpleShape = L.Handler.extend({
 		}
 
 		// Extending L.Marker in TouchEvents.js to include touch.
-		var marker = new L.MarkerExt(latlng, {
+		var marker = new L.Marker.TouchExt(latlng, {
 			draggable: true,
 			icon: icon,
 			zIndexOffset: 10,

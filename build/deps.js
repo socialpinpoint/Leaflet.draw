@@ -43,7 +43,7 @@ var deps = {
 			'ext/LineUtil.Intersect.js',
 			'ext/Polyline.Intersect.js',
 			'ext/Polygon.Intersect.js',
-            'ext/MarkerExt.js',
+            'ext/Marker.TouchExt.js',
             'ext/AffineTransform.js',
             'ext/LineMarker.js',
 		],

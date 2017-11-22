@@ -2,7 +2,7 @@
  * A marker that has a fixed pixel offset w.r.t. its marker position.
  *
  */
-L.MarkerExt = L.Marker.extend({
+L.Marker.TouchExt = L.Marker.Touch.extend({
 
     options: {
         dx: 0,
@@ -10,7 +10,7 @@ L.MarkerExt = L.Marker.extend({
     },
 
     initialize: function (latlng, options) {
-        L.Marker.prototype.initialize.call(this, latlng, options);
+        L.Marker.Touch.prototype.initialize.call(this, latlng, options);
         this._dx = this.options.dx;
         this._dy = this.options.dy;
     },
@@ -24,11 +24,11 @@ L.MarkerExt = L.Marker.extend({
     _setPos : function (pos) {
         pos.x += this._dx;
         pos.y += this._dy;
-        L.Marker.prototype._setPos.call(this, pos);
+        L.Marker.Touch.prototype._setPos.call(this, pos);
     }
 
 });
 
-L.markerExt = function (latlng, options) {
-    return new L.MarkerExt(latlng, options);
+L.markerTouchExt = function (latlng, options) {
+    return new L.Marker.TouchExt(latlng, options);
 };
