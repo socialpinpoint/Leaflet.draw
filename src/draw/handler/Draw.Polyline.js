@@ -368,13 +368,13 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		var markerCount = this._markers.length;
 		// The last marker should have a click handler to close the polyline
 		if (markerCount > 1) {
-			setTimeout(function(){
-+                               if ( this._markers === undefined ) {
-+                                       return;
-+                               }
-+
-+                               this._markers[this._markers.length - 1].on('click', this._finishShape, this);
-+                       }.bind(this), 75);
+			setTimeout(function() {
+				if ( this._markers === undefined ) {
+					return;
+				}
+				
+				this._markers[this._markers.length - 1].on('click', this._finishShape, this);
+			}.bind(this), 75);
 		}
 
 		// Remove the old marker click handler (as only the last point should close the polyline)
