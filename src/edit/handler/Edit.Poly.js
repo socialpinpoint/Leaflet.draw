@@ -133,7 +133,7 @@ L.Edit.PolyVerticesEdit = L.Handler.extend({
 
 		if (!(poly instanceof L.Polygon)) {
 			poly.options.fill = false;
-			if (poly.options.editing) {
+			if (poly.options.editing && poly.options.editing.className) {
 				poly.options.editing.fill = false;
 			}
 		}
