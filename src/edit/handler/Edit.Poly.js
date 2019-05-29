@@ -156,7 +156,7 @@ L.Edit.PolyVerticesEdit = L.Handler.extend({
 	removeHooks: function () {
 		var poly = this._poly;
 
-		poly.setStyle(poly.options.original);
+		poly.setStyle(poly.options);
 
 		if (poly._map) {
 			poly._map.removeLayer(this._markerGroup);
