@@ -1,5 +1,5 @@
 /*
- Leaflet.draw 0.4.14+ea2497e, a plugin that adds drawing and editing tools to Leaflet powered maps.
+ Leaflet.draw 0.4.13+077efa1, a plugin that adds drawing and editing tools to Leaflet powered maps.
  (c) 2012-2017, Jacob Toye, Jon West, Smartrak, Leaflet
 
  https://github.com/Leaflet/Leaflet.draw
@@ -8,7 +8,7 @@
 (function (window, document, undefined) {/**
  * Leaflet.draw assumes that you have already included the Leaflet library.
  */
-L.drawVersion = "0.4.14+ea2497e";
+L.drawVersion = "0.4.13+077efa1";
 /**
  * @class L.Draw
  * @aka Draw
@@ -1774,7 +1774,7 @@ L.Edit.SimpleShape = L.Handler.extend({
 	removeHooks: function () {
 		var shape = this._shape;
 
-		shape.setStyle(shape.options.original);
+		shape.setStyle(shape.options);
 
 		if (shape._map) {
 			this._unbindMarker(this._moveMarker);
