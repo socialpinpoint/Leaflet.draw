@@ -1,5 +1,5 @@
 /*
- Leaflet.draw 0.4.13+077efa1, a plugin that adds drawing and editing tools to Leaflet powered maps.
+ Leaflet.draw 0.4.16+695c45d, a plugin that adds drawing and editing tools to Leaflet powered maps.
  (c) 2012-2017, Jacob Toye, Jon West, Smartrak, Leaflet
 
  https://github.com/Leaflet/Leaflet.draw
@@ -8,7 +8,7 @@
 (function (window, document, undefined) {/**
  * Leaflet.draw assumes that you have already included the Leaflet library.
  */
-L.drawVersion = "0.4.13+077efa1";
+L.drawVersion = "0.4.16+695c45d";
 /**
  * @class L.Draw
  * @aka Draw
@@ -827,7 +827,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 				}
 
 				this._markers[this._markers.length - 1].on('click', this._finishShape, this);
-			}.bind(this), 75);
+			}.bind(this), 500);
 		}
 
 		// Remove the old marker click handler (as only the last point should close the polyline)
